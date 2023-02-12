@@ -10,6 +10,7 @@ typedef struct {
 } noise_distr;
 
 noise_distr noise_distr_create(size_t freq_ln, size_t* freq, double distr_pow);
+void noise_distr_free(noise_distr* distr);
 size_t noise_distr_pick(noise_distr* distr, size_t avoid_ln, size_t* avoid);
 
 #endif

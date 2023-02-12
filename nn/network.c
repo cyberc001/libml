@@ -182,18 +182,16 @@ void nn_network_sgns_backpropagate(nn_network* nw, vec expected, vec predicted,
 {
 	vec grad = sgns_loss_gradient(nw->d_lossfunc, expected, predicted, ns_dat);
 	// compute updates for output matrix
-	mat grad_m = mat_from_vec_column(grad);
+	mat grad_m = mat_from_vec_column_nocopy(grad);
 	mat h_m = mat_from_vec_row(nw->layers[1].values);
 	mat delta_w_out = mat_mul(grad_m, h_m);
 	mat_free(h_m);
-	mat_free(grad_m);
 	mat_psmul(delta_w_out, nw->learn_rate);
 	// compute updates for input matrix
-	grad_m = mat_from_vec_row(grad);
+	grad_m = mat_from_vec_row_nocopy(grad);
 	mat w_out = spcmat_tran(nw->layers[1].weights, ns_dat->neg_ln + 1, ns_dat->neg_idx);
 	mat delta_w_in = mat_mul(grad_m, w_out);
 	mat_free(w_out);
-	mat_free(grad_m);
 	mat_psmul(delta_w_in, nw->learn_rate);
 	// apply updates
 	mat delta_w_out_t = mat_tran(delta_w_out);
@@ -224,7 +222,6 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 
 	int seek_loss = (epochs == 0);
 	double total_loss = INFINITY;
-	double min_loss = INFINITY;
 	vec input = vec_create(nw->layers[0].values.n);
 	vec output = vec_create(nw->layers[nw->layers_cnt - 1].values.n);
 
@@ -233,6 +230,11 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 	struct neg_log_likelihood_ns_loss_args ns_dat;
 	ns_dat.neg_ln = neg_sample_amt;
 	ns_dat.neg_idx = neg_samples;
+
+	double min_loss = INFINITY;
+	mat* best_weights = malloc(sizeof(mat) * nw->layers_cnt);
+	for(size_t i = 0; i < nw->layers_cnt; ++i)
+		best_weights[i] = mat_create(nw->layers[i].weights.m, nw->layers[i].weights.n);
 
 	for(; epochs > 0 || seek_loss; --epochs){
 		set->shuffle(set);
@@ -276,12 +278,24 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 			vec_free(predicted);
 		}
 		total_loss /= set->size;
+		if(total_loss < min_loss){
+			min_loss = total_loss;
+			for(size_t i = 0; i < nw->layers_cnt; ++i)
+				mat_copy_over(best_weights[i], nw->layers[i].weights);
+		}
 		if(seek_loss && total_loss <= loss_target)
 			break;
-		if(total_loss < min_loss)
-			min_loss = total_loss;
 	}
 
+	if(!seek_loss){
+		for(size_t i = 0; i < nw->layers_cnt; ++i)
+			mat_copy_over(nw->layers[i].weights, best_weights[i]);
+	}
+
+	for(size_t i = 0; i < nw->layers_cnt; ++i)
+		mat_free(best_weights[i]);
+	free(best_weights);
+	free(neg_samples);
 	vec_free(input);
 	vec_free(output);
 }

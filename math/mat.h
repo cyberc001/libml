@@ -15,7 +15,11 @@ typedef struct {
 #define mat_from_vec_row(v) ((mat){1, (v).n, memcpy(malloc((v).n * sizeof(double)), (v).data, (v).n * sizeof(double))})
 #define mat_from_vec_column(v) ((mat){(v).n, 1, memcpy(malloc((v).n * sizeof(double)), (v).data, (v).n * sizeof(double))})
 
+#define mat_from_vec_row_nocopy(v) ((mat){1, (v).n, (v).data})
+#define mat_from_vec_column_nocopy(v) ((mat){(v).n, 1, (v).data})
+
 #define mat_get(_mat, i, j) ((_mat).data[(i) * (_mat).n + (j)])
+#define mat_copy_over(m1, m2) (memcpy(m1.data, m2.data, sizeof(double) * m1.m * m1.n))
 
 void mat_psub(mat m1, mat m2);
 void mat_padd(mat m1, mat m2);

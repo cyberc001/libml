@@ -21,6 +21,12 @@ noise_distr noise_distr_create(size_t freq_ln, size_t* freq, double distr_pow)
 	return distr;
 }
 
+void noise_distr_free(noise_distr* distr)
+{
+	free(distr->chance);
+	free(distr->chance_sum);
+}
+
 size_t noise_distr_pick(noise_distr* distr, size_t avoid_ln, size_t* avoid)
 {
 	assert(avoid_ln < distr->ln);
