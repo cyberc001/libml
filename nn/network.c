@@ -128,9 +128,10 @@ void nn_network_backpropagate(nn_network* nw,
 
 void nn_network_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
-						int debug_flags)
+						int flags)
 {
-	nn_network_randomize_weights(nw);
+	if(!(flags & NNFLAG_DONT_RANDOMIZE_WEIGHTS))
+		nn_network_randomize_weights(nw);
 
 	int seek_loss = (epochs == 0);
 	double total_loss = INFINITY;
@@ -139,7 +140,7 @@ void nn_network_train(nn_network* nw, nn_training_set* set,
 
 	for(; epochs > 0 || seek_loss; --epochs){
 		set->shuffle(set);
-		if(debug_flags & NNFLAG_DEBUG_LOSS)
+		if(flags & NNFLAG_DEBUG_LOSS)
 			printf("loss: %g ", total_loss);
 		total_loss = 0;
 
@@ -156,7 +157,7 @@ void nn_network_train(nn_network* nw, nn_training_set* set,
 			vec_free(predicted);
 		}
 		total_loss /= set->size;
-		if(debug_flags & NNFLAG_DEBUG_LOSS)
+		if(flags & NNFLAG_DEBUG_LOSS)
 			printf("--> %g\n", total_loss);
 		if(seek_loss && total_loss <= loss_target)
 			break;
@@ -215,10 +216,11 @@ void nn_network_sgns_backpropagate(nn_network* nw, vec expected, vec predicted,
 
 void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
-						int debug_flags,
+						int flags,
 						size_t neg_sample_amt, noise_distr* distr)
 {
-	nn_network_randomize_weights(nw);
+	if(!(flags & NNFLAG_DONT_RANDOMIZE_WEIGHTS))
+		nn_network_randomize_weights(nw);
 
 	int seek_loss = (epochs == 0);
 	double total_loss = INFINITY;
@@ -238,7 +240,7 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 
 	for(; epochs > 0 || seek_loss; --epochs){
 		set->shuffle(set);
-		if(debug_flags && NNFLAG_DEBUG_LOSS)
+		if(flags && NNFLAG_DEBUG_LOSS)
 			printf("loss: %-10g min loss: %-10g\n", total_loss, min_loss);
 		total_loss = 0;
 
@@ -264,7 +266,7 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 			}
 			total_loss += loss / pos_sample_amt;
 
-			if(debug_flags & NNFLAG_DEBUG_VALUES){
+			if(flags & NNFLAG_DEBUG_VALUES){
 				printf("expected values\t");
 				for(size_t j = 0; j < set->out_size; ++j)
 					printf("%lu ", ((size_t*)set->data_out + i * set->out_size)[j]);
@@ -298,6 +300,37 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 	free(neg_samples);
 	vec_free(input);
 	vec_free(output);
+}
+
+/***** Saving functions *****/
+
+void nn_network_save_weights(FILE* fd, nn_network* nw)
+{
+	fwrite(&nw->layers_cnt, sizeof(nw->layers_cnt), 1, fd);
+	for(size_t i = 0; i < nw->layers_cnt - 1; ++i){
+		nn_layer* lr = &nw->layers[i];
+		fwrite(&lr->weights.m, sizeof(lr->weights.m), 1, fd);
+		fwrite(&lr->weights.n, sizeof(lr->weights.n), 1, fd);
+		fwrite(lr->weights.data, sizeof(double), lr->weights.m * lr->weights.n, fd);
+	}
+}
+
+int nn_network_load_weights(FILE* fd, nn_network* nw)
+{
+	size_t layers_cnt;
+	fread(&layers_cnt, sizeof(layers_cnt), 1, fd);
+	if(layers_cnt != nw->layers_cnt)
+		return NN_ERROR_LAYERS_CNT_NOT_MATCH;
+	for(size_t i = 0; i < layers_cnt - 1; ++i){
+		nn_layer* lr = &nw->layers[i];
+		size_t m, n;
+		fread(&m, sizeof(m), 1, fd);
+		fread(&n, sizeof(n), 1, fd);
+		if(m != lr->weights.m || n != lr->weights.n)
+			return NN_ERROR_WEIGHTS_DIM_NOT_MATCH;
+		fread(lr->weights.data, sizeof(double), m * n, fd);
+	}
+	return 0;
 }
 
 /***** Display (debug) functions *****/

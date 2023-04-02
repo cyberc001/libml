@@ -8,6 +8,11 @@
 #define NNFLAG_DEBUG_LOSS 1
 #define NNFLAG_DEBUG_VALUES 2
 
+#define NNFLAG_DONT_RANDOMIZE_WEIGHTS 64
+
+#define NN_ERROR_LAYERS_CNT_NOT_MATCH 1
+#define NN_ERROR_WEIGHTS_DIM_NOT_MATCH 2
+
 typedef struct {
 	nn_layer* layers;
 	size_t layers_cnt;
@@ -38,7 +43,7 @@ void nn_network_backpropagate(nn_network* nw, vec expected, vec predicted,
 
 void nn_network_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
-						int debug_flags);
+						int flags);
 
 /***** Negative sampling skip-gram training functions *****/
 /* Network should consist of 3 layers (1 input / 1 hidden / 1 output).
@@ -53,8 +58,13 @@ void nn_network_sgns_backpropagate(nn_network* nw, vec expected, vec predicted,
 // TODO rename to skip-gram training, since there is only 1 input
 void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
-						int debug_flags,
+						int flags,
 						size_t neg_sample_amt, noise_distr* distr);
+
+/***** Saving functions *****/
+
+void nn_network_save_weights(FILE* fd, nn_network* nw);
+int nn_network_load_weights(FILE* fd, nn_network* nw);
 
 /***** Display (debug) functions *****/
 
