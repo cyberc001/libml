@@ -4,6 +4,8 @@
 #include "math/mat.h"
 #include "defs.h"
 
+#define NNFLAG_LAYER_HAS_BIAS 1		// not every algorithm supports bias neurons
+
 typedef struct {
 	mat weights;
 
@@ -18,10 +20,6 @@ typedef struct {
 } nn_layer;
 
 /***** Layer manipulation functions *****/
-
-/* Note:
- * sz / next_sz include bias neuron (if it's present).
- */
 nn_layer nn_layer_create(size_t sz, size_t next_sz, int flags,
 							activation_func actfunc, activation_func d_actfunc);
 

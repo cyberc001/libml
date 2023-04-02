@@ -33,13 +33,12 @@ void nn_network_free(nn_network* nw);
 
 void nn_network_randomize_weights(nn_network* nw);
 
-/***** Training functions *****/
+/***** Conventional training functions *****/
 
 /* Note: input vector should have the same size as input layer. */
 vec nn_network_feedforward(nn_network* nw, vec input);
 /* Should be called after feedforward(). */
-void nn_network_backpropagate(nn_network* nw, vec expected, vec predicted,
-								vec input);
+void nn_network_backpropagate(nn_network* nw, vec expected, vec predicted);
 
 void nn_network_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
@@ -55,7 +54,6 @@ void nn_network_sgns_backpropagate(nn_network* nw, vec expected, vec predicted,
 								struct neg_log_likelihood_ns_loss_args* ns_dat);
 
 /* Training set should be one-hot encoded. */
-// TODO rename to skip-gram training, since there is only 1 input
 void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 						size_t epochs, double loss_target,
 						int flags,

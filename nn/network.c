@@ -27,13 +27,19 @@ void nn_network_randomize_weights(nn_network* nw)
 		nn_layer_randomize_weights(&nw->layers[i]);
 }
 
-/***** Training functions *****/
+/***** Conventional training functions *****/
+
 vec nn_network_feedforward(nn_network* nw, vec input)
 {
-	// set input layer's calculated values as input values (thanks cap)
 	vec_free(nw->layers[0].values);
-	nw->layers[0].values = vec_dup(input);
-	mat data = mat_from_vec_row(input);
+	if(nw->layers[0].flags & NNFLAG_LAYER_HAS_BIAS){
+		nw->layers[0].values = vec_dup_resize(input, input.n + 1);
+		nw->layers[0].values.data[input.n] = 1;
+	}
+	else
+		nw->layers[0].values = vec_dup(input);
+	mat data = mat_from_vec_row(nw->layers[0].values);
+
 	for(size_t i = 1; i < nw->layers_cnt; ++i){
 		nn_layer* lr = &nw->layers[i];
 		nn_layer* lr_prev = &nw->layers[i-1];
@@ -43,6 +49,11 @@ vec nn_network_feedforward(nn_network* nw, vec input)
 		mat data2 = mat_mul(data, lr_prev->weights);
 		mat_free(data);
 		data = data2;
+		if(lr->flags & NNFLAG_LAYER_HAS_BIAS){
+			data.data = realloc(data.data, sizeof(double) * (data.n + 1));
+			data.data[data.n] = 1;
+			++data.n;
+		}
 		lr->prevalues = vec_from_mat_row(data);
 		// apply activation function to each element (column) in current row vector
 		for(size_t j = 0; j < data.n; ++j)
@@ -68,12 +79,10 @@ static vec d_act(nn_layer* lr)
 		out.data[i] = lr->d_actfunc(lr->prevalues.data[i]);
 	return out;
 }
-static void update_weights(nn_network* nw,
-							nn_layer* lr, nn_layer* prev_lr,
-							vec delta, vec input)
+static void update_weights(nn_network* nw, nn_layer* lr, vec delta)
 {
 	mat delta_m = mat_from_vec_column(delta);
-	mat input_m = mat_from_vec_row(prev_lr ? prev_lr->values : input); // x_i-1 is either output from previous layer or neural network input
+	mat input_m = mat_from_vec_row(lr->values);
 	mat deriv = mat_mul(delta_m, input_m);
 	mat_free(delta_m); // TODO optimise this with in-place multiplication (also pass in arguments as matrices or make functions that multiply vectors and matrices)
 	mat_free(input_m);
@@ -89,39 +98,37 @@ static void update_weights(nn_network* nw,
 
 /* Credits to https://sudeepraja.github.io/Neural/ */
 void nn_network_backpropagate(nn_network* nw,
-								vec expected, vec predicted,
-								vec input)
+								vec expected, vec predicted)
 {
 	vec lossg = loss_gradient(nw->d_lossfunc, expected, predicted);
 	vec dact = d_act(&nw->layers[nw->layers_cnt - 1]);
 	vec_pemul(lossg, dact); // lossg = delta_L
 	vec_free(dact);
 
-	update_weights(nw, &nw->layers[nw->layers_cnt - 1],
-					nw->layers_cnt >= 2 ? &nw->layers[nw->layers_cnt - 2] : NULL,
-					lossg, input);
+	update_weights(nw, &nw->layers[nw->layers_cnt - 2], lossg);
 
 	// calculate delta_i, from L - 1 to 1
 	vec next_delta = lossg;
-	for(size_t i = nw->layers_cnt - 2;; --i){
-		nn_layer* lr = &nw->layers[i];
-		vec dact = d_act(lr);
+	if(nw->layers_cnt > 2){
+		for(size_t i = nw->layers_cnt - 3;; --i){
+			nn_layer* lr = &nw->layers[i];
+			vec dact = d_act(lr);
 
-		// multiply i+1th weight matrix by i+1th delta
-		mat next_delta_m = mat_from_vec_column(next_delta);
-		mat weight_by_delta = mat_mul(lr->weights, next_delta_m);
-		mat_free(next_delta_m);
-		vec weight_by_delta_v = vec_from_mat_column(weight_by_delta);
-		mat_free(weight_by_delta);
-		vec_pemul(weight_by_delta_v, dact);
-		vec_free(dact);
+			// multiply i+1th weight matrix by i+1th delta
+			mat next_delta_m = mat_from_vec_column(next_delta);
+			mat weight_by_delta = mat_mul(lr->weights, next_delta_m);
+			mat_free(next_delta_m);
+			vec weight_by_delta_v = vec_from_mat_column(weight_by_delta);
+			mat_free(weight_by_delta);
+			vec_pemul(weight_by_delta_v, dact);
+			vec_free(dact);
 
-		update_weights(nw, lr, i == 0 ? NULL : &nw->layers[i - 1],
-				weight_by_delta_v, input);
+			update_weights(nw, lr, weight_by_delta_v);
 
-		vec_free(next_delta);
-		next_delta = weight_by_delta_v;
-		if(i == 0) break;
+			vec_free(next_delta);
+			next_delta = weight_by_delta_v;
+			if(i == 0) break;
+		}
 	}
 	vec_free(next_delta);
 }
@@ -151,8 +158,7 @@ void nn_network_train(nn_network* nw, nn_training_set* set,
 			double loss = nw->lossfunc(output, predicted, NULL);
 			total_loss += loss;
 
-			nn_network_backpropagate(nw, output, predicted,
-										input);
+			nn_network_backpropagate(nw, output, predicted);
 
 			vec_free(predicted);
 		}

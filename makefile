@@ -1,5 +1,5 @@
 INCLUDE := -I. -I./math -I./nn
-FLAGS := -Wall -Wextra -g -Wno-parentheses -Wno-unused-parameter
+FLAGS := -Wall -Wextra -g -Wno-parentheses -Wno-unused-parameter -fsanitize=address
 LIBS := -lm
 
 CC := gcc $(INCLUDE) $(FLAGS) $(LIBS)

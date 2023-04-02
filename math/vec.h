@@ -11,6 +11,7 @@ typedef struct {
 
 #define vec_create(n) ((vec){(n), malloc(sizeof(double) * (n))})
 #define vec_free(v) (free((v).data))
+#define vec_resize(v, nn) {(v).n = (nn); (v).data = realloc((v).data, sizeof(double) * (nn));}
 
 #define vec_from_mat_row(_m) ((vec){(_m).n, memcpy(malloc((_m).n * sizeof(double)), (_m).data, (_m).n * sizeof(double))})
 #define vec_from_mat_column(_m) ((vec){(_m).m, memcpy(malloc((_m).m * sizeof(double)), (_m).data, (_m).m * sizeof(double))})
@@ -18,6 +19,7 @@ typedef struct {
 /* Note: vectors should have the same size. */
 #define vec_copy(to, from) {memcpy((to).data, (from).data, (to).n * sizeof(double));}
 #define vec_dup(v) ((vec){(v).n, memcpy(malloc((v).n * sizeof(double)), (v).data, (v).n * sizeof(double))})
+#define vec_dup_resize(v, nn) ((vec){(nn), memcpy(malloc((nn) * sizeof(double)), (v).data, (v).n * sizeof(double))})
 
 /* s - Scalar
  * p - in Place (v1 = v1 ...)
