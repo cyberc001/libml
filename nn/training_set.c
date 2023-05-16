@@ -97,28 +97,28 @@ typedef struct {
 	size_t cnt;
 } seq_double;
 
-#define SEQ_DOUBLE_GET_I()\
+#define SEQ_GET_I()\
 	va_list args; va_start(args, i);\
 	size_t seq_i = va_arg(args, size_t);\
 	va_end(args);
 
 static void __nn_get_input_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
-	SEQ_DOUBLE_GET_I();
+	SEQ_GET_I();
 	seq_double* seq = (seq_double*)set->data_in + i;
 	if(seq_i < seq->cnt) memcpy(v.data, seq->data + seq_i * set->in_size, sizeof(double) * set->in_size);
 	else v.data[0] = -INFINITY;
 }
 static void __nn_get_output_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
-	SEQ_DOUBLE_GET_I();
+	SEQ_GET_I();
 	seq_double* seq = (seq_double*)set->data_out + i;
 	if(seq_i < seq->cnt) memcpy(v.data, seq->data + seq_i * set->out_size, sizeof(double) * set->out_size);
 	else v.data[0] = -INFINITY;
 }
 static void __nn_set_input_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
-	SEQ_DOUBLE_GET_I();
+	SEQ_GET_I();
 	seq_double* seq = (seq_double*)set->data_in + i;
 	if(seq_i >= seq->cnt){
 		seq->data = realloc(seq->data, sizeof(double) * set->in_size * (seq_i + 1));
@@ -128,7 +128,7 @@ static void __nn_set_input_sequence_double(nn_training_set* set, vec v, size_t i
 }
 static void __nn_set_output_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
-	SEQ_DOUBLE_GET_I();
+	SEQ_GET_I();
 	seq_double* seq = (seq_double*)set->data_out + i;
 	if(seq_i >= seq->cnt){
 		seq->data = realloc(seq->data, sizeof(double) * set->out_size * (seq_i + 1));
@@ -153,6 +153,82 @@ static void __nn_shuffle_sequence_double(nn_training_set* set)
 		((seq_double*)set->data_out)[b] = tmp;
 	}
 }
+
+/* Sequence of one-hot encoded vectors */
+
+typedef struct {
+	size_t* data;
+	size_t cnt;
+} seq_onehot;
+
+static void __nn_get_input_sequence_onehot(nn_training_set* set, vec v, size_t i, ...)
+{
+	SEQ_GET_I();
+	seq_onehot* seq = (seq_onehot*)set->data_in + i;
+
+	if(seq_i < seq->cnt){
+		memset(v.data, 0, v.n * sizeof(double));
+		for(size_t j = 0; j < set->in_size; ++j)
+			v.data[seq->data[seq_i * set->in_size + j]] = 1;
+	}
+	else v.data[0] = -INFINITY;
+}
+static void __nn_get_output_sequence_onehot(nn_training_set* set, vec v, size_t i, ...)
+{
+	SEQ_GET_I();
+	seq_onehot* seq = (seq_onehot*)set->data_out + i;
+
+	if(seq_i < seq->cnt){
+		memset(v.data, 0, v.n * sizeof(double));
+		for(size_t j = 0; j < set->out_size; ++j)
+			v.data[seq->data[seq_i * set->out_size + j]] = 1;
+	}
+	else v.data[0] = -INFINITY;
+}
+static void __nn_set_input_sequence_onehot(nn_training_set* set, vec v, size_t i, ...)
+{
+	SEQ_GET_I();
+	seq_onehot* seq = (seq_onehot*)set->data_in + i;
+
+	size_t onehot_gap = v.n / set->in_size;
+	for(size_t j = 0; j < set->in_size; ++j)
+		for(size_t k = onehot_gap * j; k < onehot_gap * (j + 1); ++k)
+			if(v.data[k] >= 0.5){
+				seq->data[seq_i * set->in_size + j] = k;
+				break;
+			}
+}
+static void __nn_set_output_sequence_onehot(nn_training_set* set, vec v, size_t i, ...)
+{
+	SEQ_GET_I();
+	seq_onehot* seq = (seq_onehot*)set->data_in + i;
+
+	size_t onehot_gap = v.n / set->in_size;
+	for(size_t j = 0; j < set->in_size; ++j)
+		for(size_t k = onehot_gap * j; k < onehot_gap * (j + 1); ++k)
+			if(v.data[k] >= 0.5){
+				seq->data[seq_i * set->in_size + j] = k;
+				break;
+			}
+}
+
+static void __nn_shuffle_sequence_onehot(nn_training_set* set)
+{
+	seq_onehot tmp;
+	for(size_t i = 0; i < set->size / 2; ++i){
+		size_t a = rand() % set->size,
+			   b = rand() % set->size;
+
+		tmp = ((seq_onehot*)set->data_in)[a];
+		((seq_onehot*)set->data_in)[a] = ((seq_onehot*)set->data_in)[b];
+		((seq_onehot*)set->data_in)[b] = tmp;
+
+		tmp = ((seq_onehot*)set->data_out)[a];
+		((seq_onehot*)set->data_out)[a] = ((seq_onehot*)set->data_out)[b];
+		((seq_onehot*)set->data_out)[b] = tmp;
+	}
+}
+
 
 nn_training_set nn_training_set_create(int data_type, size_t size, size_t in_size, size_t out_size)
 {
@@ -191,7 +267,17 @@ nn_training_set nn_training_set_create(int data_type, size_t size, size_t in_siz
 			set.set_output = __nn_set_output_sequence_double;
 			set.shuffle = __nn_shuffle_sequence_double;
 			break;
-
+		case NN_TRAINING_SET_TYPE_SEQUENCE_ONEHOT:
+			set.data_in = malloc(sizeof(seq_onehot) * size);
+			memset(set.data_in, 0, sizeof(seq_onehot) * size);
+			set.data_out = malloc(sizeof(seq_onehot) * size);
+			memset(set.data_out, 0, sizeof(seq_onehot) * size);
+			set.get_input = __nn_get_input_sequence_onehot;
+			set.get_output = __nn_get_output_sequence_onehot;
+			set.set_input = __nn_set_input_sequence_onehot;
+			set.set_output = __nn_set_output_sequence_onehot;
+			set.shuffle = __nn_shuffle_sequence_onehot;
+			break;
 	}
 	return set;
 }
@@ -206,6 +292,15 @@ void nn_training_set_free(nn_training_set* set)
 				free(seq.data);
 			}
 			break;
+		case NN_TRAINING_SET_TYPE_SEQUENCE_ONEHOT:
+			for(size_t i = 0; i < set->size; ++i){
+				seq_onehot seq = ((seq_onehot*)set->data_in)[i];
+				free(seq.data);
+				seq = ((seq_onehot*)set->data_out)[i];
+				free(seq.data);
+			}
+			break;
+
 	}
 	free(set->data_in);
 	free(set->data_out);
@@ -229,7 +324,12 @@ void nn_training_set_expand(nn_training_set* set, size_t how_much)
 			set->data_out = realloc(set->data_out, sizeof(seq_double) * set->size);
 			memset(set->data_out + sizeof(seq_double) * (set->size - how_much), 0, how_much * sizeof(seq_double));
 			break;
-
+		case NN_TRAINING_SET_TYPE_SEQUENCE_ONEHOT:
+			set->data_in = realloc(set->data_in, sizeof(seq_onehot) * set->size);
+			memset(set->data_in + sizeof(seq_onehot) * (set->size - how_much), 0, how_much * sizeof(seq_onehot));
+			set->data_out = realloc(set->data_out, sizeof(seq_onehot) * set->size);
+			memset(set->data_out + sizeof(seq_onehot) * (set->size - how_much), 0, how_much * sizeof(seq_onehot));
+			break;
 	}
 }
 void nn_training_set_add(nn_training_set* set, vec v_in, vec v_out)
@@ -265,6 +365,18 @@ void nn_training_set_save(FILE* fd, nn_training_set* set)
 				fwrite(seq->data, sizeof(double) * set->out_size, seq->cnt, fd);
 			}
 			break;
+		case NN_TRAINING_SET_TYPE_SEQUENCE_ONEHOT:
+			for(size_t i = 0; i < set->size; ++i){
+				seq_onehot* seq = (seq_onehot*)set->data_in + i;
+				fwrite(&seq->cnt, sizeof(seq->cnt), 1, fd);
+				fwrite(seq->data, sizeof(size_t) * set->in_size, seq->cnt, fd);
+
+				seq = (seq_onehot*)set->data_out + i;
+				fwrite(&seq->cnt, sizeof(seq->cnt), 1, fd);
+				fwrite(seq->data, sizeof(size_t) * set->out_size, seq->cnt, fd);
+			}
+			break;
+
 	}
 }
 nn_training_set nn_training_set_load(FILE* fd)
@@ -296,6 +408,19 @@ nn_training_set nn_training_set_load(FILE* fd)
 				fread(&seq->cnt, sizeof(seq->cnt), 1, fd);
 				seq->data = malloc(sizeof(double) * set.out_size * seq->cnt);
 				fread(seq->data, sizeof(double) * set.out_size, seq->cnt, fd);
+			}
+			break;
+		case NN_TRAINING_SET_TYPE_SEQUENCE_ONEHOT:
+			for(size_t i = 0; i < set.size; ++i){
+				seq_onehot* seq = (seq_onehot*)set.data_in + i;
+				fread(&seq->cnt, sizeof(seq->cnt), 1, fd);
+				seq->data = malloc(sizeof(size_t) * set.in_size * seq->cnt);
+				fread(seq->data, sizeof(size_t) * set.in_size, seq->cnt, fd);
+
+				seq = (seq_onehot*)set.data_out + i;
+				fread(&seq->cnt, sizeof(seq->cnt), 1, fd);
+				seq->data = malloc(sizeof(size_t) * set.out_size * seq->cnt);
+				fread(seq->data, sizeof(size_t) * set.out_size, seq->cnt, fd);
 			}
 			break;
 	}
