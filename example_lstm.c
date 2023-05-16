@@ -28,9 +28,8 @@ int main()
 				in.n = d; printf("input: "); vec_print(in);
 				out.n = p; printf("output: "); vec_print(out);
 			}*/
-			in.n = out.n = j;
-			set.set_input(&set, in, i);
-			set.set_output(&set, out, i);
+			set.set_input(&set, in, i, j);
+			set.set_output(&set, out, i, j);
 		}
 	}
 

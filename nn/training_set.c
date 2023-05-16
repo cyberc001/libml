@@ -1,21 +1,22 @@
 #include "training_set.h"
 #include <math.h>
+#include <stdarg.h>
 
 /* Real value vectors */
 
-static void __nn_get_input_double(nn_training_set* set, vec v, size_t i)
+static void __nn_get_input_double(nn_training_set* set, vec v, size_t i, ...)
 {
 	memcpy(v.data, ((double*)set->data_in) + i * set->in_size, sizeof(double) * set->in_size);
 }
-static void __nn_get_output_double(nn_training_set* set, vec v, size_t i)
+static void __nn_get_output_double(nn_training_set* set, vec v, size_t i, ...)
 {
 	memcpy(v.data, ((double*)set->data_out) + i * set->out_size, sizeof(double) * set->out_size);
 }
-static void __nn_set_input_double(nn_training_set* set, vec v, size_t i)
+static void __nn_set_input_double(nn_training_set* set, vec v, size_t i, ...)
 {
 	memcpy(((double*)set->data_in) + i * set->in_size, v.data, sizeof(double) * set->in_size);
 }
-static void __nn_set_output_double(nn_training_set* set, vec v, size_t i)
+static void __nn_set_output_double(nn_training_set* set, vec v, size_t i, ...)
 {
 	memcpy(((double*)set->data_out) + i * set->out_size, v.data, sizeof(double) * set->out_size);
 }
@@ -39,19 +40,19 @@ static void __nn_shuffle_double(nn_training_set* set)
 
 /* One-hot encoded vectors */
 
-static void __nn_get_input_onehot(nn_training_set* set, vec v, size_t i)
+static void __nn_get_input_onehot(nn_training_set* set, vec v, size_t i, ...)
 {
 	memset(v.data, 0, v.n * sizeof(double));
 	for(size_t j = 0; j < set->in_size; ++j)
 		v.data[((size_t*)set->data_in)[i * set->in_size + j]] = 1;
 }
-static void __nn_get_output_onehot(nn_training_set* set, vec v, size_t i)
+static void __nn_get_output_onehot(nn_training_set* set, vec v, size_t i, ...)
 {
 	memset(v.data, 0, v.n * sizeof(double));
 	for(size_t j = 0; j < set->out_size; ++j)
 		v.data[((size_t*)set->data_out)[i * set->out_size + j]] = 1;
 }
-static void __nn_set_input_onehot(nn_training_set* set, vec v, size_t i)
+static void __nn_set_input_onehot(nn_training_set* set, vec v, size_t i, ...)
 {
 	size_t onehot_gap = v.n / set->in_size;
 	for(size_t j = 0; j < set->in_size; ++j)
@@ -61,7 +62,7 @@ static void __nn_set_input_onehot(nn_training_set* set, vec v, size_t i)
 				break;
 			}
 }
-static void __nn_set_output_onehot(nn_training_set* set, vec v, size_t i)
+static void __nn_set_output_onehot(nn_training_set* set, vec v, size_t i, ...)
 {
 	size_t onehot_gap = v.n / set->out_size;
 	for(size_t j = 0; j < set->out_size; ++j)
@@ -96,35 +97,44 @@ typedef struct {
 	size_t cnt;
 } seq_double;
 
-static void __nn_get_input_sequence_double(nn_training_set* set, vec v, size_t i)
+#define SEQ_DOUBLE_GET_I()\
+	va_list args; va_start(args, i);\
+	size_t seq_i = va_arg(args, size_t);\
+	va_end(args);
+
+static void __nn_get_input_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
+	SEQ_DOUBLE_GET_I();
 	seq_double* seq = (seq_double*)set->data_in + i;
-	if(v.n < seq->cnt) memcpy(v.data, seq->data + v.n * set->in_size, sizeof(double) * set->in_size);
+	if(seq_i < seq->cnt) memcpy(v.data, seq->data + seq_i * set->in_size, sizeof(double) * set->in_size);
 	else v.data[0] = -INFINITY;
 }
-static void __nn_get_output_sequence_double(nn_training_set* set, vec v, size_t i)
+static void __nn_get_output_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
+	SEQ_DOUBLE_GET_I();
 	seq_double* seq = (seq_double*)set->data_out + i;
-	if(v.n < seq->cnt) memcpy(v.data, seq->data + v.n * set->out_size, sizeof(double) * set->out_size);
+	if(seq_i < seq->cnt) memcpy(v.data, seq->data + seq_i * set->out_size, sizeof(double) * set->out_size);
 	else v.data[0] = -INFINITY;
 }
-static void __nn_set_input_sequence_double(nn_training_set* set, vec v, size_t i)
+static void __nn_set_input_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
+	SEQ_DOUBLE_GET_I();
 	seq_double* seq = (seq_double*)set->data_in + i;
-	if(v.n >= seq->cnt){
-		seq->data = realloc(seq->data, sizeof(double) * set->in_size * (v.n + 1));
-		seq->cnt = v.n + 1;
+	if(seq_i >= seq->cnt){
+		seq->data = realloc(seq->data, sizeof(double) * set->in_size * (seq_i + 1));
+		seq->cnt = seq_i + 1;
 	}
-	memcpy(seq->data + v.n * set->in_size, v.data, sizeof(double) * set->in_size);
+	memcpy(seq->data + seq_i * set->in_size, v.data, sizeof(double) * set->in_size);
 }
-static void __nn_set_output_sequence_double(nn_training_set* set, vec v, size_t i)
+static void __nn_set_output_sequence_double(nn_training_set* set, vec v, size_t i, ...)
 {
+	SEQ_DOUBLE_GET_I();
 	seq_double* seq = (seq_double*)set->data_out + i;
-	if(v.n >= seq->cnt){
-		seq->data = realloc(seq->data, sizeof(double) * set->out_size * (v.n + 1));
-		seq->cnt = v.n + 1;
+	if(seq_i >= seq->cnt){
+		seq->data = realloc(seq->data, sizeof(double) * set->out_size * (seq_i + 1));
+		seq->cnt = seq_i + 1;
 	}
-	memcpy(seq->data + v.n * set->out_size, v.data, sizeof(double) * set->out_size);
+	memcpy(seq->data + seq_i * set->out_size, v.data, sizeof(double) * set->out_size);
 }
 
 static void __nn_shuffle_sequence_double(nn_training_set* set)

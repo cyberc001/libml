@@ -15,10 +15,10 @@ struct nn_training_set {
 	size_t in_size, out_size;
 	void *data_in, *data_out;
 	/* vector argument should already be created by vec_create(); call */
-	void (*get_input)(nn_training_set*, vec, size_t);
-	void (*get_output)(nn_training_set*, vec, size_t);
-	void (*set_input)(nn_training_set*, vec, size_t);
-	void (*set_output)(nn_training_set*, vec, size_t);
+	void (*get_input)(nn_training_set*, vec, size_t, ...);
+	void (*get_output)(nn_training_set*, vec, size_t, ...);
+	void (*set_input)(nn_training_set*, vec, size_t, ...);
+	void (*set_output)(nn_training_set*, vec, size_t, ...);
 	void (*shuffle)(nn_training_set*); // doesn't have to seed RNG
 };
 

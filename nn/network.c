@@ -656,12 +656,10 @@ void nn_network_lstm_train(nn_network* nw, nn_training_set* set,
 					io_size = data_idx + 1;
 				}
 
-				input[data_idx].n = data_idx;
-				set->get_input(set, input[data_idx], i);
+				set->get_input(set, input[data_idx], i, data_idx);
 				if(isinf(input[data_idx].data[0])) // end of sequence
 					break; // now data_idx == sequence length
-				output[data_idx].n = data_idx;
-				set->get_output(set, output[data_idx], i);
+				set->get_output(set, output[data_idx], i, data_idx);
 				
 				input[data_idx].n = d;
 				output[data_idx].n = dim_out;
