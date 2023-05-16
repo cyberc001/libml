@@ -17,6 +17,9 @@ typedef struct {
 	int flags;
 	activation_func actfunc; // activation function
 	activation_func d_actfunc; // activation function derivative
+
+	void* data; // custom data that varies with certain algorithms
+	void (*data_free)(void* data); // destructor for data, if it's not NULL
 } nn_layer;
 
 /***** Layer manipulation functions *****/

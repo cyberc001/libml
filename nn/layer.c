@@ -9,12 +9,17 @@ nn_layer nn_layer_create(size_t sz, size_t next_sz, int flags, activation_func a
 	nn_layer out = (nn_layer){weights: mat_create(sz + !!(flags & NNFLAG_LAYER_HAS_BIAS), next_sz),
 								flags: flags,
 								actfunc: actfunc, d_actfunc: d_actfunc,
-								prevalues: vec_create(sz), values: vec_create(sz)};
+								prevalues: vec_create(sz), values: vec_create(sz),
+								data: NULL, data_free: NULL};
 	return out;
 }
 
 void nn_layer_free(nn_layer* lr)
 {
+	if(lr->data_free && lr->data)
+		lr->data_free(lr->data);
+	if(lr->data)
+		free(lr->data);
 	mat_free(lr->weights);
 	vec_free(lr->prevalues);
 	vec_free(lr->values);

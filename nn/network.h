@@ -59,6 +59,31 @@ void nn_network_sgns_train(nn_network* nw, nn_training_set* set,
 						int flags,
 						size_t neg_sample_amt, noise_distr* distr);
 
+/***** Long-short term memory training functions ******/
+/* Network should consist of 3 or more layers (1 input / >=1 hidden / 1 output).
+ * Output layer should have weight matrix of size (d+p)x4p, 
+ * Hidden layers - 2px4p,
+ * Output layer - pxd 
+ * Activation functions are not used, they can be anything, including NULL. 
+ * Bias is included in each layer with the help of [void* data] member and nn_network_lstm_init() function. 
+ * Each layer's value is hidden state value, and prevalue is cell state value from the previous timestamp.*/
+
+/* Initializes the biases for each layer's gates. */
+void nn_network_lstm_init(nn_network* nw);
+void nn_network_lstm_reset_state(nn_network* nw);
+
+/* cell_state is a vector of size p, h_in is a matrix of size layers_cntxp, h_out has the same size.
+ * Outputs not only output vector, but also hidden states through h_out argument for being used as h_in argument in the next timestamp.
+ * cell_state, h_in should be zero for the first call. */
+vec nn_network_lstm_feedforward(nn_network* nw, vec input, mat h_in, mat h_out);
+
+void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t expected_cnt);
+
+/* Training set should have NN_TRAINING_SET_TYPE_SEQUENCE_DOUBLE type. */
+void nn_network_lstm_train(nn_network* nw, nn_training_set* set,
+						size_t epochs, double loss_target,
+						int flags);
+
 /***** Saving functions *****/
 
 void nn_network_save_weights(FILE* fd, nn_network* nw);

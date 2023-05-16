@@ -57,6 +57,16 @@ mat mat_tran(mat m)
 	return o;
 }
 
+
+mat vec_outer_product(vec v1, vec v2)
+{
+	mat _out = mat_create((v1).n, (v2).n);
+	for(size_t i = 0; i < (v1).n; ++i)
+		for(size_t j = 0; j < (v2).n; ++j)
+			_out.data[i * (v2).n + j] = (v1).data[i] * (v2).data[j];
+	return _out;
+}
+
 void mat_print(mat m)
 {
 	size_t sz = m.m * m.n;
@@ -157,4 +167,52 @@ mat spcmat_tran(mat m, size_t column_cnt, size_t* columns)
 			mat_get(o, j, i) = mat_get(m, i, c);
 	}
 	return o;
+}
+
+/* Range matrix functions */
+
+void rncmat_padd1(mat m1, mat m2, size_t column_beg, size_t column_end)
+{
+	for(size_t i = 0; i < m1.m; ++i)
+		for(size_t j = column_beg; j < column_end; ++j)
+			mat_get(m1, i, j) += mat_get(m2, i, j - column_beg);
+}
+void rncmat_padd2(mat m1, mat m2, size_t column_beg, size_t column_end)
+{
+	for(size_t i = 0; i < m1.m; ++i)
+		for(size_t j = column_beg; j < column_end; ++j)
+			mat_get(m1, i, j - column_beg) += mat_get(m2, i, j);
+}
+
+void rncmat_pemul1(mat m1, mat m2, size_t column_beg, size_t column_end)
+{
+	for(size_t i = 0; i < m1.m; ++i)
+		for(size_t j = column_beg; j < column_end; ++j)
+			mat_get(m1, i, j) *= mat_get(m2, i, j - column_beg);
+}
+void rncmat_pemul12(mat m1, mat m2, size_t column_beg1, size_t column_end1,
+									size_t column_beg2)
+{
+	if(column_beg1 > column_beg2){
+		size_t diff = column_beg1 - column_beg2;
+		for(size_t i = 0; i < m1.m; ++i)
+			for(size_t j = column_beg1; j < column_end1; ++j)
+				mat_get(m1, i, j) *= mat_get(m2, i, j - diff);
+	}
+	else{
+		size_t diff = column_beg2 - column_beg1;
+		for(size_t i = 0; i < m1.m; ++i)
+			for(size_t j = column_beg1; j < column_end1; ++j)
+				mat_get(m1, i, j) *= mat_get(m2, i, j + diff);
+	}
+}
+
+
+void rncmat_vec_pdot(mat m, vec v, vec _out,
+					size_t column_beg, size_t column_end)
+{
+	vec_zero(_out);
+	for(size_t i = 0; i < m.m; ++i)
+		for(size_t j = column_beg; j < column_end; ++j)
+			_out.data[i] += mat_get(m, i, j) * v.data[j - column_beg];
 }

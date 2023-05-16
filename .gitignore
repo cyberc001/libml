@@ -3,3 +3,4 @@
 *.o
 *.a
 example_sum
+example_lstm

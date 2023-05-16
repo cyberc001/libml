@@ -6,6 +6,7 @@
 
 #define NN_TRAINING_SET_TYPE_DOUBLE 1
 #define NN_TRAINING_SET_TYPE_ONEHOT 2
+#define NN_TRAINING_SET_TYPE_SEQUENCE_DOUBLE 3 /* output vector's n is the index of the input vector in the sequence number (size_t)i. Probe from 0 until it returns -inf as the first element in the output vector. */
 
 typedef struct nn_training_set nn_training_set;
 struct nn_training_set {
