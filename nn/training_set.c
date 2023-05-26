@@ -189,6 +189,10 @@ static void __nn_set_input_sequence_onehot(nn_training_set* set, vec v, size_t i
 {
 	SEQ_GET_I();
 	seq_onehot* seq = (seq_onehot*)set->data_in + i;
+	if(seq_i >= seq->cnt){
+		seq->data = realloc(seq->data, sizeof(size_t) * set->in_size * (seq_i + 1));
+		seq->cnt = seq_i + 1;
+	}
 
 	size_t onehot_gap = v.n / set->in_size;
 	for(size_t j = 0; j < set->in_size; ++j)
@@ -201,7 +205,11 @@ static void __nn_set_input_sequence_onehot(nn_training_set* set, vec v, size_t i
 static void __nn_set_output_sequence_onehot(nn_training_set* set, vec v, size_t i, ...)
 {
 	SEQ_GET_I();
-	seq_onehot* seq = (seq_onehot*)set->data_in + i;
+	seq_onehot* seq = (seq_onehot*)set->data_out + i;
+	if(seq_i >= seq->cnt){
+		seq->data = realloc(seq->data, sizeof(size_t) * set->out_size * (seq_i + 1));
+		seq->cnt = seq_i + 1;
+	}
 
 	size_t onehot_gap = v.n / set->in_size;
 	for(size_t j = 0; j < set->in_size; ++j)
