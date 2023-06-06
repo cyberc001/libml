@@ -3,6 +3,13 @@
 
 #include "network.h"
 
+/* All credit goes to
+ * https://nicodjimenez.github.io/2014/08/08/lstm.html
+ * and his repository
+ * https://github.com/nicodjimenez/lstm
+ * I merely ported it to C and added various features.
+ */
+
 void nn_network_lstm_init(nn_network* nw);
 void nn_network_lstm_reset_state(nn_network* nw);
 
