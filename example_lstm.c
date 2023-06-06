@@ -13,11 +13,12 @@ double toy_squared_loss_d(vec y, vec _y, size_t i, ...)
 
 int main()
 {
-	const size_t layer_cnt = 2;
+	const size_t layer_cnt = 3;
 	const size_t d = 2, p = 4;
 	nn_network nw = nn_network_create(layer_cnt, toy_squared_loss, toy_squared_loss_d, 0.1);
 	nw.layers[0] = nn_layer_create(d + p, 4*p, 0, relu, d_relu);
-	nw.layers[1] = nn_layer_create(p, 0, 0, relu, d_relu);
+	nw.layers[1] = nn_layer_create(2*p, 4*p, 0, relu, d_relu);
+	nw.layers[2] = nn_layer_create(p, 0, 0, relu, d_relu);
 	nn_network_lstm_init(&nw);
 	nn_network_randomize_weights(&nw);
 

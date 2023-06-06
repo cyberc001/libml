@@ -87,7 +87,7 @@ static void nn_network_lstm_free_data(void* _data)
 
 static void lstm_add_bias(mat gates, nn_layer* lr, size_t p)
 {
-	rnrmat_padd1(gates, mat_from_vec_column_nocopy(LSTM_LAYER_BIAS(*lr, input)), 0, p);		
+	rnrmat_padd1(gates, mat_from_vec_column_nocopy(LSTM_LAYER_BIAS(*lr, input)), 0, p);
 	rnrmat_padd1(gates, mat_from_vec_column_nocopy(LSTM_LAYER_BIAS(*lr, forget)), p, 2 * p);
 	rnrmat_padd1(gates, mat_from_vec_column_nocopy(LSTM_LAYER_BIAS(*lr, output)), 2 * p, 3 * p);
 	rnrmat_padd1(gates, mat_from_vec_column_nocopy(LSTM_LAYER_BIAS(*lr, cstate)), 3 * p, 4 * p);
@@ -98,7 +98,7 @@ static void lstm_update_cell_state(vec cell_state, mat gates, mat data, size_t p
 	rnrmat_pemul1(gates, mat_from_vec_column_nocopy(cell_state), p, 2 * p); // forget gate * previous cell-state
 	rnrmat_pemul12(gates, gates, 0, p, 3 * p); // input gate * new cell-state
 	// copy all calculations above into cell-state
-	mat_copy_to_vec_row(cell_state, gates, p); 
+	mat_copy_to_vec_row(cell_state, gates, p);
 	rnrmat_padd2(mat_from_vec_column_nocopy(cell_state), gates, 0, p);
 	// leak cell-state into hidden state
 	for(size_t i = 0; i < p; ++i)
@@ -171,7 +171,7 @@ vec nn_network_lstm_feedforward(nn_network* nw, vec input, mat h_in, mat h_out)
 	mat_apply_activation_func_range(gates, sigmoid, 0, 3 * p);
 	mat_apply_activation_func_range(gates, tanh, 3 * p,);
 
-	data = mat_create_zero(1, 2 * p); // change hidden state vector length for hidden-to-hidden updates
+	data = mat_create_zero(2 * p, 1); // change hidden state vector length for hidden-to-hidden updates
 	mat_copy_to_mat(data, h_in, p, p,); // get hidden state from previous timestamp
 
 	mat_append_row_vec(LSTM_LAYER_PREV_GATES(nw->layers[0]), vec_from_mat_nocopy(gates));
@@ -187,8 +187,8 @@ vec nn_network_lstm_feedforward(nn_network* nw, vec input, mat h_in, mat h_out)
 		mat_append_row_vec(LSTM_LAYER_PREV_INPUTS(*lr), vec_from_mat_nocopy(data));
 
 		mat_copy_to_mat(data, h_in, p, p, k * p); // get hidden state from previous timestamp
-		gates = mat_mul(data, lr->weights);
-		lstm_add_bias(gates, &nw->layers[0], p);
+		gates = mat_mul(lr->weights, data);
+		lstm_add_bias(gates, &nw->layers[k], p);
 		mat_apply_activation_func_range(gates, sigmoid, 0, 3 * p);
 		mat_apply_activation_func_range(gates, tanh, 3 * p,);
 		mat_append_row_vec(LSTM_LAYER_PREV_GATES(nw->layers[k]), vec_from_mat_nocopy(gates));
@@ -291,21 +291,14 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 	vec bottom_diff_h = {data: NULL}, bottom_diff_s = {data: NULL};
 
 	for(size_t t = expected_cnt - 1;; --t){
-		//fprintf(stderr, "TIMESTAMP: %lu\n", t);
-		//fprintf(stderr, "expected: "); vec_print(expected_arr[t]);
-		//fprintf(stderr, "got: "); vec_print((vec){data: LSTM_LAYER_PREV_HIDDEN_STATES(nw->layers[nw->layers_cnt - 2]).data + t*2*p, n: p});
 		vec top_diff_h = nn_network_loss_grad(nw->d_lossfunc, expected_arr[t], (vec){data: LSTM_LAYER_PREV_HIDDEN_STATES(nw->layers[nw->layers_cnt - 2]).data + t*2*p, n: p});
 		if(bottom_diff_h.data)
 			vec_padd(top_diff_h, bottom_diff_h);
-		//fprintf(stderr, "loss gradient (top_diff_h): "); vec_print(top_diff_h);
-		//fprintf(stderr, "LAYER: %lu\n", nw->layers_cnt - 2);
 		lstm_diff diff = lstm_get_top_diff(d, p, &nw->layers[nw->layers_cnt - 2], nw->layers_cnt == 2, t, top_diff_h, top_diff_s, &bottom_diff_h, &bottom_diff_s);
 		lstm_diff_add(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), &diff);
 		lstm_diff_free(&diff);
 		top_diff_s = bottom_diff_s;
-		#if 0
 		for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3 /* l still gets checked for 0, at the end of the loop, this condition just skips the loop entirely if network doesn't have enough layers */; --l){
-			fprintf(stderr, "LAYER: %lu\n", l);
 			vec lr_top_diff_h = vec_dup(top_diff_h);
 			vec_padd(lr_top_diff_h, bottom_diff_h);
 
@@ -313,17 +306,19 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 			lstm_diff_add(&LSTM_LAYER_DIFF(nw->layers[l]), &diff);
 			vec_free(lr_top_diff_h);
 			lstm_diff_free(&diff);
+			top_diff_s = bottom_diff_s;
 	
 			if(l == 0) break;
 		}
-		#endif
 		vec_free(top_diff_h);
 		if(t == 0) break;
 	}
 
 	lstm_diff_apply(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), nw, &nw->layers[nw->layers_cnt - 2]);
-	for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3; --l) 
-		lstm_diff_apply(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), nw, &nw->layers[l]);
+	for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3; --l){
+		lstm_diff_apply(&LSTM_LAYER_DIFF(nw->layers[l]), nw, &nw->layers[l]);
+		if(l == 0) break;
+	}
 
 	vec_free(top_diff_s);
 	vec_free(bottom_diff_h);
