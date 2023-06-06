@@ -10,10 +10,13 @@ typedef struct {
 } vec;
 
 #define vec_create(n) ((vec){(n), malloc(sizeof(double) * (n))})
+vec vec_create_random(size_t n);
+vec vec_create_zero(size_t n);
+
 #define vec_free(v) (free((v).data))
 #define vec_resize(v, nn) {(v).n = (nn); (v).data = realloc((v).data, sizeof(double) * (nn));}
-
-vec vec_create_random(size_t n);
+#define vec_shift_resize(v, off) { memmove((v).data, (v).data + (off), sizeof(double) * ((v).n - (off))); (v).n -= (off); (v).data = realloc((v).data, sizeof(double) * (v).n); }
+#define vec_zero(v) (memset((v).data, 0, sizeof(double) * (v).n))
 
 // TODO unite these 2 macros
 #define vec_from_mat_row(_m) ((vec){(_m).n, memcpy(malloc((_m).n * sizeof(double)), (_m).data, (_m).n * sizeof(double))})
@@ -23,8 +26,6 @@ vec vec_create_random(size_t n);
 #define vec_copy(to, from, begin_to, begin_from, amt) {memcpy((to).data + ((#begin_to)[0] == '\0' ? 0 : begin_to +0), (from).data + ((#begin_from)[0] == '\0' ? 0 : begin_from +0), ((#amt)[0] == '\0' ? (to).n : amt +0) * sizeof(double));}
 #define vec_dup(v) ((vec){(v).n, memcpy(malloc((v).n * sizeof(double)), (v).data, (v).n * sizeof(double))})
 #define vec_dup_resize(v, nn) ((vec){(nn), memcpy(malloc((nn) * sizeof(double)), (v).data, (v).n * sizeof(double))})
-
-#define vec_zero(v) (memset((v).data, 0, sizeof(double) * (v).n))
 
 #define vec_assign_expr(v, expr) {for(size_t i = 0; i < (v).n; ++i){ double el = (v).data[i]; (v).data[i] = (expr); }}
 

@@ -8,6 +8,12 @@ vec vec_create_random(size_t n)
 		_out.data[i] = (double)rand() / RAND_MAX;
 	return _out;
 }
+vec vec_create_zero(size_t n)
+{
+	vec v = vec_create(n);
+	vec_zero(v);
+	return v;
+}
 
 void vec_print(vec v)
 {

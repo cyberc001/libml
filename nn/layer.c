@@ -6,7 +6,7 @@
 
 nn_layer nn_layer_create(size_t sz, size_t next_sz, int flags, activation_func actfunc, activation_func d_actfunc)
 {
-	nn_layer out = (nn_layer){weights: mat_create(sz + !!(flags & NNFLAG_LAYER_HAS_BIAS), next_sz),
+	nn_layer out = (nn_layer){weights: mat_create(next_sz, sz + !!(flags & NNFLAG_LAYER_HAS_BIAS)),
 								flags: flags,
 								actfunc: actfunc, d_actfunc: d_actfunc,
 								prevalues: vec_create(sz), values: vec_create(sz),

@@ -1,6 +1,13 @@
 #include "mat.h"
 #include <stdio.h>
 
+mat mat_create_zero(size_t m, size_t n)
+{
+	mat _m = mat_create(m, n);
+	mat_zero(_m);
+	return _m;
+}
+
 void mat_psub(mat m1, mat m2)
 {
 	size_t sz = m1.m * m1.n;
@@ -183,6 +190,18 @@ void rncmat_padd2(mat m1, mat m2, size_t column_beg, size_t column_end)
 		for(size_t j = column_beg; j < column_end; ++j)
 			mat_get(m1, i, j - column_beg) += mat_get(m2, i, j);
 }
+void rnrmat_padd1(mat m1, mat m2, size_t row_beg, size_t row_end)
+{
+	for(size_t i = row_beg; i < row_end; ++i)
+		for(size_t j = 0; j < m1.n; ++j)
+			mat_get(m1, i, j) += mat_get(m2, i - row_beg, j);
+}
+void rnrmat_padd2(mat m1, mat m2, size_t row_beg, size_t row_end)
+{
+	for(size_t i = row_beg; i < row_end; ++i)
+		for(size_t j = 0; j < m1.n; ++j)
+			mat_get(m1, i - row_beg, j) += mat_get(m2, i, j);
+}
 
 void rncmat_pemul1(mat m1, mat m2, size_t column_beg, size_t column_end)
 {
@@ -206,7 +225,28 @@ void rncmat_pemul12(mat m1, mat m2, size_t column_beg1, size_t column_end1,
 				mat_get(m1, i, j) *= mat_get(m2, i, j + diff);
 	}
 }
-
+void rnrmat_pemul1(mat m1, mat m2, size_t row_beg, size_t row_end)
+{
+	for(size_t i = row_beg; i < row_end; ++i)
+		for(size_t j = 0; j < m1.n; ++j)
+			mat_get(m1, i, j) *= mat_get(m2, i - row_beg, j);
+}
+void rnrmat_pemul12(mat m1, mat m2, size_t row_beg1, size_t row_end1,
+									size_t row_beg2)
+{
+	if(row_beg1 > row_beg2){
+		size_t diff = row_beg1 - row_beg2;
+		for(size_t i = row_beg1; i < row_end1; ++i)
+			for(size_t j = 0; j < m1.n; ++j)
+				mat_get(m1, i, j) *= mat_get(m2, i - diff, j);
+	}
+	else{
+		size_t diff = row_beg2 - row_beg1;
+		for(size_t i = row_beg1; i < row_end1; ++i)
+			for(size_t j = 0; j < m1.n; ++j)
+				mat_get(m1, i, j) *= mat_get(m2, i + diff, j);
+	}
+}
 
 void rncmat_vec_pdot(mat m, vec v, vec _out,
 					size_t column_beg, size_t column_end)
@@ -215,4 +255,12 @@ void rncmat_vec_pdot(mat m, vec v, vec _out,
 	for(size_t i = 0; i < m.m; ++i)
 		for(size_t j = column_beg; j < column_end; ++j)
 			_out.data[i] += mat_get(m, i, j) * v.data[j - column_beg];
+}
+void rnrmat_vec_pdot(mat m, vec v, vec _out,
+						size_t row_beg, size_t row_end)
+{
+	vec_zero(_out);
+	for(size_t i = row_beg; i < row_end; ++i)
+		for(size_t j = 0; j < m.n; ++j)
+			_out.data[i] += mat_get(m, i, j) * v.data[i - row_beg];
 }

@@ -10,6 +10,7 @@ typedef struct {
 } mat;
 
 #define mat_create(m, n) ((mat){(m), (n), malloc(sizeof(double) * (m) * (n))})
+mat mat_create_zero(size_t m, size_t n);
 #define mat_free(m) (free((m).data))
 
 #define mat_resize(_m, _mm, _mn) ((mat){(_mm), (_mn), realloc((_m).data, sizeof(double) * (_mm) * (_mn))})
@@ -71,12 +72,19 @@ mat spcmat_tran(mat m, size_t column_cnt, size_t* columns);
 
 void rncmat_padd1(mat m1, mat m2, size_t column_beg, size_t column_end);
 void rncmat_padd2(mat m1, mat m2, size_t column_beg, size_t column_end);
+void rnrmat_padd1(mat m1, mat m2, size_t row_beg, size_t row_end);
+void rnrmat_padd2(mat m1, mat m2, size_t row_beg, size_t row_end);
 
 void rncmat_pemul1(mat m1, mat m2, size_t column_beg, size_t column_end);
 void rncmat_pemul12(mat m1, mat m2, size_t column_beg1, size_t column_end1,
 									size_t column_beg2);
+void rnrmat_pemul1(mat m1, mat m2, size_t row_beg, size_t row_end);
+void rnrmat_pemul12(mat m1, mat m2, size_t row_beg1, size_t row_end1,
+									size_t row_beg2);
 
 void rncmat_vec_pdot(mat m, vec v, vec _out,
 						size_t column_beg, size_t column_end); // _out should have the same size as m.m
+void rnrmat_vec_pdot(mat m, vec v, vec _out,
+						size_t row_beg, size_t row_end);
 
 #endif
