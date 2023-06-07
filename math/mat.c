@@ -8,19 +8,6 @@ mat mat_create_zero(size_t m, size_t n)
 	return _m;
 }
 
-void mat_psub(mat m1, mat m2)
-{
-	size_t sz = m1.m * m1.n;
-	for(size_t i = 0; i < sz; ++i)
-		m1.data[i] -= m2.data[i];
-}
-void mat_padd(mat m1, mat m2)
-{
-	size_t sz = m1.m * m1.n;
-	for(size_t i = 0; i < sz; ++i)
-		m1.data[i] += m2.data[i];
-}
-
 mat mat_mul(mat m1, mat m2)
 {
 	mat m = mat_create(m1.m, m2.n);

@@ -170,7 +170,7 @@ vec nn_network_lstm_feedforward(nn_network* nw, vec input, mat h_in, mat h_out)
 	lstm_add_bias(gates, &nw->layers[0], p);
 	mat_apply_activation_func_range(gates, sigmoid, 0, 3 * p);
 	mat_apply_activation_func_range(gates, tanh, 3 * p,);
-
+	
 	data = mat_create_zero(2 * p, 1); // change hidden state vector length for hidden-to-hidden updates
 	mat_copy_to_mat(data, h_in, p, p,); // get hidden state from previous timestamp
 
@@ -347,7 +347,6 @@ void __nn_network_lstm_train(nn_train_params params)
 		total_loss = 0;
 
 		for(size_t i = 0; i < set->size; ++i){
-input[0].data[0] = 0;
 			size_t data_idx = 0;
 			while(1){
 				if(data_idx >= io_size){
@@ -376,6 +375,9 @@ input[0].data[0] = 0;
 				vec predicted = nn_network_lstm_feedforward(nw, input[j], h_in, h_out);
 				double loss = nw->lossfunc(output[j], predicted, NULL);
 				total_loss += loss / data_idx;
+				/*printf("predicted: "); vec_print(predicted);
+				printf("expected: "); vec_print(output[j]);
+				printf("loss: %lg\n", loss);*/
 
 				mat tmp = h_in;
 				h_in = h_out;

@@ -5,7 +5,6 @@
 /* Common activation functions */
 double identity(double x) { return x; }
 double sigmoid(double x) { return 1 / (1 + pow(M_E, -x)); }
-double tanh(double x) { return (pow(M_E, 2*x) - 1) / (pow(M_E, 2*x) + 1); }
 double relu(double x) { return fmax(x, 0); }
 double hard_tanh(double x) { return fmax(fmin(x, 1), -1); }
 

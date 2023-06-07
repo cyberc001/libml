@@ -11,7 +11,6 @@ typedef double (*loss_d_func)(vec y, vec _y, size_t i, ...); // i - vector compo
 /* Common activation functions */
 double identity(double x);
 double sigmoid(double x);
-double tanh(double x);
 double relu(double x); // Rectified Linear Unit, ReLU
 double hard_tanh(double x);
 
