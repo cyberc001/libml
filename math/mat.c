@@ -35,12 +35,6 @@ mat mat_smul(mat m, double s)
 		_m.data[i] = m.data[i] * s;
 	return _m;
 }
-void mat_psmul(mat m, double s)
-{
-	size_t sz = m.m * m.n;
-	for(size_t i = 0; i < sz; ++i)
-		m.data[i] *= s;
-}
 
 mat mat_tran(mat m)
 {

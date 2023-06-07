@@ -39,7 +39,7 @@ mat mat_create_zero(size_t m, size_t n);
 mat mat_mul(mat m1, mat m2);
 mat mat_emul(mat m1, mat m2); // element-wise multiplication
 mat mat_smul(mat m, double s);
-void mat_psmul(mat m, double s);
+#define mat_psmul(_m, s) { size_t sz = (_m).m * (_m).n; for(size_t i = 0; i < sz; ++i) (_m).data[i] *= (s); }
 
 mat mat_tran(mat m);
 

@@ -17,14 +17,6 @@ static void lstm_diff_free(lstm_diff* diff)
 	vec_free(diff->bias_output);
 	vec_free(diff->bias_cstate);
 }
-static void lstm_diff_add(lstm_diff* to, lstm_diff* from)
-{
-	mat_padd(to->gates, from->gates);
-	vec_padd(to->bias_input, from->bias_input);
-	vec_padd(to->bias_forget, from->bias_forget);
-	vec_padd(to->bias_output, from->bias_output);
-	vec_padd(to->bias_cstate, from->bias_cstate);
-}
 typedef struct {
 	vec bias_input;
 	vec bias_forget;
@@ -205,7 +197,7 @@ vec nn_network_lstm_feedforward(nn_network* nw, vec input, mat h_in, mat h_out)
 	return output;
 }
 
-static lstm_diff lstm_get_top_diff(size_t d, size_t p, nn_layer* lr, int is_input_lr, size_t t,
+static void lstm_get_top_diff(size_t d, size_t p, nn_layer* lr, int is_input_lr, size_t t, mat t_weights,
 								vec top_diff_h, vec top_diff_s, /*in*/
 								vec* bottom_diff_h, vec* bottom_diff_s /*out*/)
 {
@@ -247,26 +239,26 @@ static lstm_diff lstm_get_top_diff(size_t d, size_t p, nn_layer* lr, int is_inpu
 	vec gate_cstate = (vec){data: gates.data + 3*p, n: p};
 	vec_assign_expr(dg, el * (1 - gate_cstate.data[i]*gate_cstate.data[i]));
 
-	lstm_diff diff;
+	lstm_diff diff = LSTM_LAYER_DIFF(*lr);
 	vec dgates = vec_create(4*p);
 	vec_copy(dgates, di,,, p);
 	vec_copy(dgates, df, p,, p);
 	vec_copy(dgates, _do, 2*p,, p);
 	vec_copy(dgates, dg, 3*p,, p);
-	diff.gates = vec_outer_product(dgates, xc);
-	diff.bias_input = di;
-	diff.bias_forget = df;
-	diff.bias_output = _do;
-	diff.bias_cstate = dg;
+	mat gates_diff = vec_outer_product(dgates, xc);
+	mat_padd(diff.gates, gates_diff);
+	mat_free(gates_diff);
+	vec_padd(diff.bias_input, di);
+	vec_padd(diff.bias_forget, df);
+	vec_padd(diff.bias_output, _do);
+	vec_padd(diff.bias_cstate, dg);
 
 	vec dxc = vec_create_zero(is_input_lr ? d + p : 2*p);
 	vec dxc_inc = vec_create(is_input_lr ? d + p : 2*p);
-	mat t_weights = mat_tran(lr->weights);
 	rncmat_vec_pdot(t_weights, di, dxc_inc, 0, p); vec_padd(dxc, dxc_inc);
 	rncmat_vec_pdot(t_weights, df, dxc_inc, p, 2*p); vec_padd(dxc, dxc_inc);
 	rncmat_vec_pdot(t_weights, _do, dxc_inc, 2*p, 3*p); vec_padd(dxc, dxc_inc);
 	rncmat_vec_pdot(t_weights, dg, dxc_inc, 3*p, 4*p); vec_padd(dxc, dxc_inc);
-	mat_free(t_weights);
 
 	if(bottom_diff_s->data)
 		vec_free(*bottom_diff_s);
@@ -279,7 +271,10 @@ static lstm_diff lstm_get_top_diff(size_t d, size_t p, nn_layer* lr, int is_inpu
 
 	vec_free(dgates);
 	vec_free(dxc_inc);
-	return diff;
+	vec_free(di);
+	vec_free(df);
+	vec_free(_do);
+	vec_free(dg);
 }
 
 void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t expected_cnt)
@@ -290,22 +285,21 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 	vec top_diff_s = vec_create_zero(p);
 	vec bottom_diff_h = {data: NULL}, bottom_diff_s = {data: NULL};
 
+	mat* t_weights = malloc(sizeof(mat) * nw->layers_cnt - 1);
+	for(size_t i = 0; i < nw->layers_cnt - 1; ++i)
+		t_weights[i] = mat_tran(nw->layers[i].weights);
+
 	for(size_t t = expected_cnt - 1;; --t){
 		vec top_diff_h = nn_network_loss_grad(nw->d_lossfunc, expected_arr[t], (vec){data: LSTM_LAYER_PREV_HIDDEN_STATES(nw->layers[nw->layers_cnt - 2]).data + t*2*p, n: p});
 		if(bottom_diff_h.data)
 			vec_padd(top_diff_h, bottom_diff_h);
-		lstm_diff diff = lstm_get_top_diff(d, p, &nw->layers[nw->layers_cnt - 2], nw->layers_cnt == 2, t, top_diff_h, top_diff_s, &bottom_diff_h, &bottom_diff_s);
-		lstm_diff_add(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), &diff);
-		lstm_diff_free(&diff);
+		lstm_get_top_diff(d, p, &nw->layers[nw->layers_cnt - 2], nw->layers_cnt == 2, t, t_weights[nw->layers_cnt - 2], top_diff_h, top_diff_s, &bottom_diff_h, &bottom_diff_s);
 		top_diff_s = bottom_diff_s;
 		for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3 /* l still gets checked for 0, at the end of the loop, this condition just skips the loop entirely if network doesn't have enough layers */; --l){
 			vec lr_top_diff_h = vec_dup(top_diff_h);
 			vec_padd(lr_top_diff_h, bottom_diff_h);
 
-			diff = lstm_get_top_diff(d, p, &nw->layers[l], l == 0, t, lr_top_diff_h, bottom_diff_s, &bottom_diff_h, &bottom_diff_s);
-			lstm_diff_add(&LSTM_LAYER_DIFF(nw->layers[l]), &diff);
-			vec_free(lr_top_diff_h);
-			lstm_diff_free(&diff);
+			lstm_get_top_diff(d, p, &nw->layers[l], l == 0, t, t_weights[l], lr_top_diff_h, bottom_diff_s, &bottom_diff_h, &bottom_diff_s);
 			top_diff_s = bottom_diff_s;
 	
 			if(l == 0) break;
@@ -313,6 +307,9 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 		vec_free(top_diff_h);
 		if(t == 0) break;
 	}
+
+	for(size_t i = 0; i < nw->layers_cnt - 1; ++i)
+		mat_free(t_weights[i]);
 
 	lstm_diff_apply(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), nw, &nw->layers[nw->layers_cnt - 2]);
 	for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3; --l){
