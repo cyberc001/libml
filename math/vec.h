@@ -18,9 +18,7 @@ vec vec_create_zero(size_t n);
 #define vec_shift_resize(v, off) { memmove((v).data, (v).data + (off), sizeof(double) * ((v).n - (off))); (v).n -= (off); (v).data = realloc((v).data, sizeof(double) * (v).n); }
 #define vec_zero(v) (memset((v).data, 0, sizeof(double) * (v).n))
 
-// TODO unite these 2 macros
-#define vec_from_mat_row(_m) ((vec){(_m).n, memcpy(malloc((_m).n * sizeof(double)), (_m).data, (_m).n * sizeof(double))})
-#define vec_from_mat_column(_m) ((vec){(_m).m, memcpy(malloc((_m).m * sizeof(double)), (_m).data, (_m).m * sizeof(double))})
+#define vec_from_mat(_m) ((vec){(_m).n * (_m).m, memcpy(malloc((_m).n * (_m).m * sizeof(double)), (_m).data, (_m).n * (_m).m * sizeof(double))})
 #define vec_from_mat_nocopy(_m) ((vec){(_m).n * (_m).m, (_m).data})
 
 #define vec_copy(to, from, begin_to, begin_from, amt) {memcpy((to).data + ((#begin_to)[0] == '\0' ? 0 : begin_to +0), (from).data + ((#begin_from)[0] == '\0' ? 0 : begin_from +0), ((#amt)[0] == '\0' ? (to).n : amt +0) * sizeof(double));}
@@ -34,11 +32,11 @@ vec vec_create_zero(size_t n);
  * e - Element-wise
  */
 
-#define vec_padd(v1, v2) {for(size_t i = 0; i < (v1).n; ++i) (v1).data[i] += v2.data[i];}
-#define vec_psub(v1, v2) {for(size_t i = 0; i < (v1).n; ++i) (v1).data[i] -= v2.data[i];}
+void vec_padd(vec v1, vec v2);
+void vec_psub(vec v1, vec v2);
 
-#define vec_psmul(v, s) {for(size_t i = 0; i < (v).n; ++i) (v).data[i] *= (s);}
-#define vec_pemul(v1, v2) {for(size_t i = 0; i < (v1).n; ++i) (v1).data[i] *= (v2).data[i]; }
+void vec_psmul(vec v, double s);
+void vec_pemul(vec v1, vec v2);
 
 void vec_print(vec v);
 

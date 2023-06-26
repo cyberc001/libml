@@ -8,6 +8,19 @@ mat mat_create_zero(size_t m, size_t n)
 	return _m;
 }
 
+void mat_padd(mat m1, mat m2)
+{
+	size_t sz = m1.m * m1.n;
+	for(size_t i = 0; i < sz; ++i)
+		m1.data[i] += m2.data[i];
+}
+void mat_psub(mat m1, mat m2)
+{
+	size_t sz = m1.m * m1.n;
+	for(size_t i = 0; i < sz; ++i)
+		m1.data[i] -= m2.data[i];
+}
+
 mat mat_mul(mat m1, mat m2)
 {
 	mat m = mat_create(m1.m, m2.n);
@@ -34,6 +47,12 @@ mat mat_smul(mat m, double s)
 	for(size_t i = 0; i < sz; ++i)
 		_m.data[i] = m.data[i] * s;
 	return _m;
+}
+void mat_psmul(mat m, double s)
+{
+	size_t sz = m.m * m.n;
+	for(size_t i = 0; i < sz; ++i)
+		m.data[i] *= s;
 }
 
 mat mat_tran(mat m)

@@ -33,13 +33,13 @@ mat mat_create_zero(size_t m, size_t n);
 #define mat_apply_activation_func(_mat, func) {size_t __sz = (_mat).m * (_mat).n; for(size_t i = 0; i < __sz; ++i) {(_mat).data[i] = func((_mat).data[i]);}}
 #define mat_apply_activation_func_range(_mat, func, beg, end) {size_t __end = ((#end)[0] == '\0' ? (_mat).m * (_mat).n : end +0); for(size_t i = beg; i < __end; ++i) {(_mat).data[i] = func((_mat).data[i]);}}
 
-#define mat_psub(m1, m2) { size_t sz = (m1).m * (m1).n; for(size_t i = 0; i < sz; ++i) (m1).data[i] -= (m2).data[i]; }
-#define mat_padd(m1, m2) { size_t sz = (m1).m * (m1).n; for(size_t i = 0; i < sz; ++i) (m1).data[i] += (m2).data[i]; }
+void mat_padd(mat m1, mat m2);
+void mat_psub(mat m1, mat m2);
 
 mat mat_mul(mat m1, mat m2);
 mat mat_emul(mat m1, mat m2); // element-wise multiplication
 mat mat_smul(mat m, double s);
-#define mat_psmul(_m, s) { size_t sz = (_m).m * (_m).n; for(size_t i = 0; i < sz; ++i) (_m).data[i] *= (s); }
+void mat_psmul(mat m, double s);
 
 mat mat_tran(mat m);
 
