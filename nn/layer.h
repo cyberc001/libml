@@ -1,7 +1,7 @@
 #ifndef LAYER_H
 #define LAYER_H
 
-#include "math/mat.h"
+#include "mat.h"
 #include "defs.h"
 
 #define NNFLAG_LAYER_HAS_BIAS 1		// not every algorithm supports bias neurons

@@ -1,5 +1,7 @@
 #include "mat.h"
 #include <stdio.h>
+#include "common.h"
+#include "accel.h"
 
 mat mat_create_zero(size_t m, size_t n)
 {
@@ -23,6 +25,7 @@ void mat_psub(mat m1, mat m2)
 
 mat mat_mul(mat m1, mat m2)
 {
+#if ML_CPU == 1
 	mat m = mat_create(m1.m, m2.n);
 	for(size_t i = 0; i < m1.m; ++i) // i -> row in 1st matrix (row in result)
 		for(size_t j = 0; j < m2.n; ++j){ // j -> column in 2nd matrix
@@ -31,6 +34,29 @@ mat mat_mul(mat m1, mat m2)
 				mat_get(m, i, j) += mat_get(m1, i, k) * mat_get(m2, k, j);
 		}
 	return m;
+#else
+	ACCEL_FUNC_KERNEL_TEMPLATE("mat_mul", "mat_mul");
+	mat m = mat_create_zero(m1.m, m2.n);
+
+	clSetKernelArg(kernel, 0, sizeof(int), &m1.m);
+	clSetKernelArg(kernel, 1, sizeof(int), &m1.n);
+	clSetKernelArg(kernel, 2, sizeof(int), &m2.n);
+
+	cl_mem m1_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_ONLY, m1.m * m1.n * sizeof(double), NULL, NULL);
+	cl_mem m2_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_ONLY, m2.m * m2.n * sizeof(double), NULL, NULL);
+	cl_mem m_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_WRITE, m.m * m.n * sizeof(double), NULL, NULL);
+	clEnqueueWriteBuffer(accel_queue, m1_buf, CL_TRUE, 0, m1.m * m1.n * sizeof(double), m1.data, 0, NULL, NULL);
+	clEnqueueWriteBuffer(accel_queue, m2_buf, CL_TRUE, 0, m2.m * m2.n * sizeof(double), m2.data, 0, NULL, NULL);
+	clEnqueueWriteBuffer(accel_queue, m_buf, CL_TRUE, 0, m.m * m.n * sizeof(double), m.data, 0, NULL, NULL);
+
+	clSetKernelArg(kernel, 3, sizeof(cl_mem), &m1_buf);
+	clSetKernelArg(kernel, 4, sizeof(cl_mem), &m2_buf);
+	clSetKernelArg(kernel, 5, sizeof(cl_mem), &m_buf);
+
+	ACCEL_FUNC_ENQUEUE_TEMPLATE(m1.m, m2.n, 32);
+	clEnqueueReadBuffer(accel_queue, m_buf, CL_TRUE, 0, m.m * m.n * sizeof(double), m.data, 0, NULL, NULL);
+	return m;
+#endif
 }
 mat mat_emul(mat m1, mat m2)
 {
