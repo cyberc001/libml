@@ -283,6 +283,7 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 	size_t d = nw->layers[0].weights.n - p;
 
 	vec top_diff_s = vec_create_zero(p);
+	int first_top_diff_s = 1; // logic for freeing memory taken by the first top_diff_s vector which is just zeros
 	vec bottom_diff_h = {data: NULL}, bottom_diff_s = {data: NULL};
 
 	mat* t_weights = malloc(sizeof(mat) * nw->layers_cnt - 1);
@@ -294,6 +295,10 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 		if(bottom_diff_h.data)
 			vec_padd(top_diff_h, bottom_diff_h);
 		lstm_get_top_diff(d, p, &nw->layers[nw->layers_cnt - 2], nw->layers_cnt == 2, t, t_weights[nw->layers_cnt - 2], top_diff_h, top_diff_s, &bottom_diff_h, &bottom_diff_s);
+		if(first_top_diff_s){
+			first_top_diff_s = 0;
+			vec_free(top_diff_s);
+		}
 		top_diff_s = bottom_diff_s;
 		for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3 /* l still gets checked for 0, at the end of the loop, this condition just skips the loop entirely if network doesn't have enough layers */; --l){
 			vec lr_top_diff_h = vec_dup(top_diff_h);
@@ -301,6 +306,8 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 
 			lstm_get_top_diff(d, p, &nw->layers[l], l == 0, t, t_weights[l], lr_top_diff_h, bottom_diff_s, &bottom_diff_h, &bottom_diff_s);
 			top_diff_s = bottom_diff_s;
+
+			vec_free(lr_top_diff_h);
 	
 			if(l == 0) break;
 		}
@@ -310,6 +317,7 @@ void nn_network_lstm_backpropagate(nn_network* nw, vec* expected_arr, size_t exp
 
 	for(size_t i = 0; i < nw->layers_cnt - 1; ++i)
 		mat_free(t_weights[i]);
+	free(t_weights);
 
 	lstm_diff_apply(&LSTM_LAYER_DIFF(nw->layers[nw->layers_cnt - 2]), nw, &nw->layers[nw->layers_cnt - 2]);
 	for(size_t l = nw->layers_cnt - 3; nw->layers_cnt >= 3; --l){

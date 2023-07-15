@@ -65,7 +65,7 @@ int main()
 	set.set_output(&set, output, 0, 3);
 
 	vec_free(input); vec_free(output);
-	nn_network_lstm_train(.nw = &nw, .set = &set, .flags = NN_TRAIN_FLAGS_DEBUG);
+	nn_network_lstm_train(.nw = &nw, .set = &set, .epoch_limit = 0, .flags = NN_TRAIN_FLAGS_DEBUG);
 
 	nn_network_free(&nw);
 	nn_training_set_free(&set);

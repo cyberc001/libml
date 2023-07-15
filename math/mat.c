@@ -54,7 +54,12 @@ mat mat_mul(mat m1, mat m2)
 	clSetKernelArg(kernel, 5, sizeof(cl_mem), &m_buf);
 
 	ACCEL_FUNC_ENQUEUE_TEMPLATE(m1.m, m2.n, 32);
+
 	clEnqueueReadBuffer(accel_queue, m_buf, CL_TRUE, 0, m.m * m.n * sizeof(double), m.data, 0, NULL, NULL);
+	clReleaseMemObject(m1_buf);
+	clReleaseMemObject(m2_buf);
+	clReleaseMemObject(m_buf);
+
 	return m;
 #endif
 }
