@@ -67,7 +67,7 @@ int accel_init()
 
 	cl_uint dev_ln = 0;
 	cl_device_id dev;
-	clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 1, &dev, &dev_ln);
+	clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, &dev_ln);
 	if(err != CL_SUCCESS)
 		TELL_OPENCL_ERR();
 	if(!dev_ln){

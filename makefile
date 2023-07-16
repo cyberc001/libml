@@ -1,5 +1,5 @@
 INCLUDE := -I. -I./math -I./nn
-FLAGS := -D CL_TARGET_OPENCL_VERSION=300 -Wall -Wextra -g -Wno-parentheses -Wno-unused-parameter -Wno-override-init -Wno-unused-function -fsanitize=address -pg -D'ML_CPU = 0'
+FLAGS := -D CL_TARGET_OPENCL_VERSION=300 -Wall -Wextra -g -Wno-parentheses -Wno-unused-parameter -Wno-override-init -Wno-unused-function -pg -D'ML_CPU = 0'
 LIBS := -lm -lOpenCL
 
 CC := gcc $(INCLUDE) $(FLAGS) $(LIBS)
