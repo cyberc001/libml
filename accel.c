@@ -2,6 +2,28 @@
 #include <stdio.h>
 #include <dirent.h>
 
+#define COMPILE_PROGRAM(prog_name) \
+{\
+	cl_program prog = clCreateProgramWithSource(accel_ctx, 1, &prog_name, NULL, &err);\
+	if(err != CL_SUCCESS)\
+		fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);\
+	err = clBuildProgram(prog, 1, &dev, NULL, NULL, NULL);\
+	size_t build_log_sz;\
+	clGetProgramBuildInfo(prog, dev, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz);\
+	char* build_log = malloc(build_log_sz);\
+	clGetProgramBuildInfo(prog, dev, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL);\
+	if(err != CL_SUCCESS){\
+		fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);\
+		fprintf(stderr, "%s", build_log);\
+		free(build_log);\
+	}\
+	else{\
+		fprintf(stderr, "%s", build_log);\
+		free(build_log);\
+		cl_program_dict_insert(&accel_programs, #prog_name, prog);\
+	}\
+}
+
 cl_context accel_ctx;
 cl_command_queue accel_queue;
 
@@ -68,74 +90,8 @@ int accel_init()
 	// Find and compile all OpenCL programs, put them in program dictionary
 	cl_program_dict_create(&accel_programs, 64, dict_hash, dict_cmp);
 
-	const char* prog_dir = "./cl";
-	DIR* dir = opendir(prog_dir);
-	if(!dir){
-		fprintf(stderr, "Couldn't open \"%s\" for execution\n", prog_dir);
-		return ACCEL_ERROR_CANT_OPEN_DIR;
-	}
-	struct dirent* ent;
-	while(ent = readdir(dir)){
-		if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
-			continue;
-		char* ext = ent->d_name + strlen(ent->d_name) - 1;
-		for(; ext >= ent->d_name && *ext != '.'; --ext) // looking for last dot in the file name
-			;
-		if(strcmp(ext, ".cl"))
-			continue;
-
-		char* full_path = malloc(strlen(prog_dir) + strlen(ent->d_name) + 2);
-		strcpy(full_path, prog_dir);
-		strcat(full_path, "/");
-		strcat(full_path, ent->d_name);
-		fprintf(stderr, "Compiling \"%s\"...\n", full_path);
-		FILE* fd = fopen(full_path, "r");
-		if(!fd){
-			fprintf(stderr, "Can't compile \"%s\":\nCan't open for reading\n", full_path);
-			free(full_path);
-			continue;
-		}
-
-		fseek(fd, 0, SEEK_END);
-		long fsz = ftell(fd);
-		fseek(fd, 0, SEEK_SET);
-		char* src_str = malloc(fsz + 1);
-		fread(src_str, 1, fsz, fd);
-		fclose(fd);
-		src_str[fsz] = '\0';
-
-		cl_program prog = clCreateProgramWithSource(accel_ctx, 1, (const char**)&src_str, NULL, &err);
-		free(src_str);
-		if(err != CL_SUCCESS){
-			fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);
-			goto compile_cleanup;
-		}
-		err = clBuildProgram(prog, 1, &dev, NULL, NULL, NULL);
-		size_t build_log_sz;
-		clGetProgramBuildInfo(prog, dev, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz);
-		char* build_log = malloc(build_log_sz);
-		clGetProgramBuildInfo(prog, dev, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL);
-		if(err != CL_SUCCESS){
-			fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);
-			fprintf(stderr, "%s", build_log);
-			free(build_log);
-			goto compile_cleanup;
-		}
-		else{
-			fprintf(stderr, "%s", build_log);
-			free(build_log);
-		}
-
-		size_t prog_name_ln = strlen(ent->d_name) - strlen(ext);
-		char* prog_name = malloc(prog_name_ln + 1);
-		memcpy(prog_name, ent->d_name, prog_name_ln);
-		prog_name[prog_name_ln] = '\0';
-		cl_program_dict_insert(&accel_programs, prog_name, prog);
-		fprintf(stderr, "OK.\n");
-
-		compile_cleanup:
-		free(full_path);
-	}
+	#include "cl/mat_mul.h"
+	COMPILE_PROGRAM(mat_mul)
 
 	return 0;
 }

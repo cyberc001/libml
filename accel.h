@@ -16,7 +16,7 @@
 }
 
 
-DEF_HTABLE_OA(cl_program_dict, char*, cl_program)
+DEF_HTABLE_OA(cl_program_dict, const char*, cl_program)
 
 extern cl_context accel_ctx;
 extern cl_command_queue accel_queue;
