@@ -16,6 +16,23 @@ int main()
 {
 	accel_init();
 
+	/*mat m = mat_create(10, 4);
+	for(size_t i = 0; i < m.m * m.n; ++i) m.data[i] = (i + 1.) / 2;
+	vec v = vec_create(m.n);
+	for(size_t i = 0; i < v.n; ++i) v.data[i] = (i + 1.) / 3;
+	vec w = vec_create(m.m / 2);
+
+	rncmat_vec_pdot(m, v, w, m.m / 4, m.m * 3 / 4);
+
+	mat_print(m);
+	printf("dot\n");
+	vec_print(v);
+	printf("=\n");
+	vec_print(w);
+
+	accel_release();
+	return 0;*/
+
 	/*mat m1 = mat_create(2, 2);
 	for(size_t i = 0; i < m1.m * m1.n; ++i) m1.data[i] = i + 1;
 	mat m2 = mat_create(2, 2);

@@ -35,25 +35,18 @@ mat mat_mul(mat m1, mat m2)
 		}
 	return m;
 #else
-	ACCEL_FUNC_KERNEL_TEMPLATE("mat_mul", "mat_mul");
+	ACCEL_FUNC_KERNEL("mat_mul"); 
 	mat m = mat_create_zero(m1.m, m2.n);
 
-	clSetKernelArg(kernel, 0, sizeof(int), &m1.m);
-	clSetKernelArg(kernel, 1, sizeof(int), &m1.n);
-	clSetKernelArg(kernel, 2, sizeof(int), &m2.n);
+	ACCEL_FUNC_ARG(0, int, &m1.m);
+	ACCEL_FUNC_ARG(1, int, &m1.n);
+	ACCEL_FUNC_ARG(2, int, &m2.n);
 
-	cl_mem m1_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_ONLY, m1.m * m1.n * sizeof(double), NULL, NULL);
-	cl_mem m2_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_ONLY, m2.m * m2.n * sizeof(double), NULL, NULL);
-	cl_mem m_buf = clCreateBuffer(accel_ctx, CL_MEM_READ_WRITE, m.m * m.n * sizeof(double), NULL, NULL);
-	clEnqueueWriteBuffer(accel_queue, m1_buf, CL_TRUE, 0, m1.m * m1.n * sizeof(double), m1.data, 0, NULL, NULL);
-	clEnqueueWriteBuffer(accel_queue, m2_buf, CL_TRUE, 0, m2.m * m2.n * sizeof(double), m2.data, 0, NULL, NULL);
-	clEnqueueWriteBuffer(accel_queue, m_buf, CL_TRUE, 0, m.m * m.n * sizeof(double), m.data, 0, NULL, NULL);
+	ACCEL_FUNC_ARG_BUFF(5, m_buf, CL_MEM_READ_WRITE, m.m * m.n * sizeof(double), m.data);
+	ACCEL_FUNC_ARG_BUFF(3, m1_buf, CL_MEM_READ_ONLY, m1.m * m1.n * sizeof(double), m1.data);
+	ACCEL_FUNC_ARG_BUFF(4, m2_buf, CL_MEM_READ_ONLY, m2.m * m2.n * sizeof(double), m2.data);
 
-	clSetKernelArg(kernel, 3, sizeof(cl_mem), &m1_buf);
-	clSetKernelArg(kernel, 4, sizeof(cl_mem), &m2_buf);
-	clSetKernelArg(kernel, 5, sizeof(cl_mem), &m_buf);
-
-	ACCEL_FUNC_ENQUEUE_TEMPLATE(m1.m, m2.n, 32);
+	ACCEL_FUNC_ENQUEUE(m1.m, m2.n, 32,,);
 
 	clEnqueueReadBuffer(accel_queue, m_buf, CL_TRUE, 0, m.m * m.n * sizeof(double), m.data, 0, NULL, NULL);
 	clReleaseMemObject(m1_buf);
@@ -283,9 +276,30 @@ void rncmat_vec_pdot(mat m, vec v, vec _out,
 					size_t column_beg, size_t column_end)
 {
 	vec_zero(_out);
+#if ML_CPU == 1
 	for(size_t i = 0; i < m.m; ++i)
 		for(size_t j = column_beg; j < column_end; ++j)
 			_out.data[i] += mat_get(m, i, j) * v.data[j - column_beg];
+#else
+	ACCEL_FUNC_KERNEL("rncmat_vec_pdot");
+	
+	ACCEL_FUNC_ARG(0, int, &m.m);
+	ACCEL_FUNC_ARG(1, int, &m.n);
+	ACCEL_FUNC_ARG(2, int, &column_beg);
+	ACCEL_FUNC_ARG(3, int, &column_end);
+
+	ACCEL_FUNC_ARG_BUFF(6, w_buf, CL_MEM_READ_WRITE, _out.n * sizeof(double), _out.data);
+	ACCEL_FUNC_ARG_BUFF(4, m_buf, CL_MEM_READ_ONLY, m.m * m.n * sizeof(double), m.data);
+	ACCEL_FUNC_ARG_BUFF(5, v_buf, CL_MEM_READ_ONLY, v.n * sizeof(double), v.data);
+
+	ACCEL_FUNC_ENQUEUE(m.m, 1, 32,,);
+
+	clEnqueueReadBuffer(accel_queue, w_buf, CL_TRUE, 0, _out.n * sizeof(double), _out.data, 0, NULL, NULL);
+	clReleaseMemObject(m_buf);
+	clReleaseMemObject(v_buf);
+	clReleaseMemObject(w_buf);
+#endif
+
 }
 void rnrmat_vec_pdot(mat m, vec v, vec _out,
 						size_t row_beg, size_t row_end)

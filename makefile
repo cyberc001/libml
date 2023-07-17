@@ -13,7 +13,7 @@ libml.a: vec.o mat.o noise_distr.o common.o layer.o accel.o defs.o network.o net
 example_lstm: example_lstm.c libml.a
 	$(CC) $< -o $@ -L. -lml
 
-accel.o: accel.c accel.h	cl/mat_mul.h
+accel.o: accel.c accel.h	cl/mat.h
 	$(CCO) $< -o $@
 defs.o: defs.c defs.h
 	$(CCO) $< -o $@

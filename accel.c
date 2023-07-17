@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <dirent.h>
 
-#define COMPILE_PROGRAM(prog_name) \
+#define COMPILE_CL_PROGRAM(prog_name, source) \
 {\
+	const char* prog_name = source;\
 	cl_program prog = clCreateProgramWithSource(accel_ctx, 1, &prog_name, NULL, &err);\
 	if(err != CL_SUCCESS)\
 		fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);\
@@ -90,8 +91,7 @@ int accel_init()
 	// Find and compile all OpenCL programs, put them in program dictionary
 	cl_program_dict_create(&accel_programs, 64, dict_hash, dict_cmp);
 
-	#include "cl/mat_mul.h"
-	COMPILE_PROGRAM(mat_mul)
+	#include "cl/mat.h"
 
 	return 0;
 }

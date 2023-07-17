@@ -28,7 +28,7 @@ void accel_release();
 
 const char* get_opencl_error(int error);
 
-#define ACCEL_FUNC_KERNEL_TEMPLATE(prog_name, kernel_name)\
+#define ACCEL_FUNC_KERNEL(prog_name)\
 	static cl_kernel kernel = NULL;\
 	static cl_event event;\
 	if(!kernel){\
@@ -38,22 +38,27 @@ const char* get_opencl_error(int error);
 			exit(-1);\
 		}\
 		int err;\
-		kernel = clCreateKernel(*prog, kernel_name, &err);\
+		kernel = clCreateKernel(*prog, prog_name, &err);\
 		if(err != CL_SUCCESS){\
-			fprintf(stderr, "While trying to create kernel \"%s\" for program \"%s\":\n", kernel_name, prog_name);\
+			fprintf(stderr, "While trying to create kernel \"%s\" for program \"%s\":\n", prog_name, prog_name);\
 			fprintf(stderr, "OpenCL error: %s (%d)\n", get_opencl_error(err), err);\
 			exit(-1);\
 		}\
 		event = clCreateUserEvent(accel_ctx, NULL);\
 	}
 
-#define ACCEL_FUNC_ENQUEUE_TEMPLATE(_m, _n, _TS)\
+#define ACCEL_FUNC_ENQUEUE(_m, _n, _TS, _offm, _offn)\
 	const size_t TS = (_TS);\
-	const size_t offset[2] = {0, 0};\
+	const size_t offset[2] = {(#_offm)[0] == '\0' ? 0 : _offm + 0, (#_offn)[0] == '\0' ? 0 : _offn + 0};\
 	const size_t global[2] = {(_m), (_n)};\
 	const size_t local[2] = {MIN(TS, (_m)), MIN(TS, (_n))};\
 	clEnqueueNDRangeKernel(accel_queue, kernel, 2, offset,\
 				global, local, 0, NULL, &event);\
-	clWaitForEvents(1, &event); 
+	clWaitForEvents(1, &event);
 
+#define ACCEL_FUNC_ARG(num, type, arg) clSetKernelArg(kernel, num, sizeof(type), arg)
+#define ACCEL_FUNC_ARG_BUFF(num, name, flags, size, data)\
+	cl_mem name = clCreateBuffer(accel_ctx, flags, size, NULL, NULL);\
+	clEnqueueWriteBuffer(accel_queue, name, CL_TRUE, 0, size, data, 0, NULL, NULL);\
+	clSetKernelArg(kernel, num, sizeof(cl_mem), &name)
 #endif
