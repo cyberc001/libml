@@ -8,6 +8,11 @@ CLC := ar rcs
 
 all: libml.a example_lstm
 
+clean:
+	-rm *.o
+	-rm libml.a
+	-rm example_lstm
+
 libml.a: vec.o mat.o noise_distr.o common.o layer.o accel.o defs.o network.o network_lstm.o training_set.o
 	$(CLC) $@ $^
 example_lstm: example_lstm.c libml.a
