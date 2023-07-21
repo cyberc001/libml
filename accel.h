@@ -49,12 +49,30 @@ const char* get_opencl_error(int error);
 
 #define ACCEL_FUNC_ENQUEUE(_m, _n, _TS, _offm, _offn)\
 	const size_t TS = (_TS);\
-	const size_t offset[2] = {(#_offm)[0] == '\0' ? 0 : _offm + 0, (#_offn)[0] == '\0' ? 0 : _offn + 0};\
+	const size_t offset[2] = {(#_offm)[0] == '\0' ? 0 : (_offm + 0), (#_offn)[0] == '\0' ? 0 : (_offn + 0)};\
 	const size_t global[2] = {(_m), (_n)};\
 	const size_t local[2] = {MIN(TS, (_m)), MIN(TS, (_n))};\
 	clEnqueueNDRangeKernel(accel_queue, kernel, 2, offset,\
 				global, local, 0, NULL, &event);\
 	clWaitForEvents(1, &event);
+
+#define ACCEL_FUNC_ENQUEUE1D(_n, _TS, _offm, _offn)\
+	const size_t TS = (_TS);\
+	const size_t offset = (#_offm)[0] == '\0' ? 0 : (_offm + 0);\
+	const size_t global = (_n);\
+	const size_t local = MIN(TS, (_n));\
+	clEnqueueNDRangeKernel(accel_queue, kernel, 1, &offset,\
+				&global, &local, 0, NULL, &event);\
+	clWaitForEvents(1, &event);
+
+#define ACCEL_FUNC_PROFILE_ENQUEUE(name)\
+{\
+	cl_ulong start, end;\
+	clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);\
+	clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);\
+	fprintf(stderr, "Execution time of %s: %lg\n", (name), (end - start) / 1000000.);\
+}
+
 
 #define ACCEL_FUNC_ARG(num, type, arg) clSetKernelArg(kernel, num, sizeof(type), arg)
 #define ACCEL_FUNC_ARG_BUFF(num, name, flags, size, data)\
