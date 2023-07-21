@@ -12,6 +12,15 @@ COMPILE_CL_PROGRAM(mat_padd,
 "	A[gr*N + gc] = B[gr*N + gc];\n"
 "}\n");
 
+// Transposes matrix A (MxN), result is stored in matrix B (NxM).
+COMPILE_CL_PROGRAM(mat_tran,
+"__kernel void mat_tran(const int M, const int N,\n"
+"			const __global double* A, __global double* B)\n"
+"{\n"
+"	const int gr = get_global_id(0);\n"
+"	const int gc = get_global_id(1);\n"
+"	B[gc*M + gr] = A[gr*N + gc];\n"
+"}\n");
 
 // source: https://cnugteren.github.io/tutorial/pages/page3.html
 // Multiplies A (MxK) and B (KxN) matrices and puts the result in matrix C.

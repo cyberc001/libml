@@ -98,12 +98,30 @@ void mat_psmul(mat m, double s)
 }
 
 mat mat_tran(mat m)
-{
+{	
 	mat o = mat_create(m.n, m.m);
+#if ML_CPU == 1
 	for(size_t i = 0; i < o.m; ++i)
 		for(size_t j = 0; j < o.n; ++j)
-			mat_get(o, i, j) = mat_get(m, j, i);
+			mat_get(o, i, j) = mat_get(m, j, i)i;
 	return o;
+#else
+	ACCEL_FUNC_KERNEL("mat_tran");
+
+	ACCEL_FUNC_ARG(0, int, &m.m);
+	ACCEL_FUNC_ARG(1, int, &m.n);
+
+	ACCEL_FUNC_ARG_BUFF(2, m_buf, CL_MEM_READ_ONLY, m.m * m.n * sizeof(double), m.data);
+	ACCEL_FUNC_ARG_BUFF(3, o_buf, CL_MEM_READ_WRITE, o.m * o.n * sizeof(double), o.data);
+
+	ACCEL_FUNC_ENQUEUE(m.m, m.n, 32,,);
+
+	clEnqueueReadBuffer(accel_queue, o_buf, CL_TRUE, 0, o.m * o.n * sizeof(double), o.data, 0, NULL, NULL);
+	clReleaseMemObject(m_buf);
+	clReleaseMemObject(o_buf);
+
+	return o;
+#endif
 }
 
 
